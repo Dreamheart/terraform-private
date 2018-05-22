@@ -46,6 +46,11 @@ func resourceAliyunOnsTopicCreate(d *schema.ResourceData, meta interface{}) erro
 	}
 
 	d.SetId(topic)
+
+	if err := meta.(*AliyunClient).WaitForTopicReady(topic, regionId, DefaultLongTimeout); err != nil {
+		return fmt.Errorf("WaitForTopic %s got error: %#v", Running, err)
+	}
+
 	return resourceAliyunOnsTopicRead(d, meta)
 }
 

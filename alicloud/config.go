@@ -27,11 +27,11 @@ import (
 	"github.com/denverdino/aliyungo/ecs"
 	"github.com/denverdino/aliyungo/ess"
 	"github.com/denverdino/aliyungo/kms"
-	"github.com/denverdino/aliyungo/location"
 	"github.com/denverdino/aliyungo/ram"
 	"github.com/denverdino/aliyungo/slb"
 	"github.com/hashicorp/terraform/terraform"
 	"github.com/Dreamheart/apsarastack-mq-go-sdk/service/ons"
+	"github.com/denverdino/aliyungo/location"
 )
 
 // Config of aliyun
@@ -178,7 +178,7 @@ func (c *Config) loadAndValidate() error {
 }
 
 func (c *Config) validateRegion() error {
-
+	return nil
 	for _, valid := range common.ValidRegions {
 		if c.Region == valid {
 			return nil
@@ -230,30 +230,33 @@ func (c *Config) essConn() (*ess.Client, error) {
 	return client, nil
 }
 func (c *Config) ossConn() (*oss.Client, error) {
-
-	endpointClient := location.NewClient(c.AccessKey, c.SecretKey)
-	endpointClient.SetSecurityToken(c.SecurityToken)
-	args := &location.DescribeEndpointsArgs{
-		Id:          c.Region,
-		ServiceCode: "oss",
-		Type:        "openAPI",
-	}
-
-	endpoints, err := endpointClient.DescribeEndpoints(args)
-	if err != nil {
-		return nil, fmt.Errorf("Describe endpoint using region: %#v got an error: %#v.", c.Region, err)
-	}
-	endpointItem := endpoints.Endpoints.Endpoint
-	var endpoint string
-	if endpointItem == nil || len(endpointItem) <= 0 {
-		log.Printf("Cannot find endpoint in the region: %#v", c.Region)
-		endpoint = ""
-	} else {
-		endpoint = strings.ToLower(endpointItem[0].Protocols.Protocols[0]) + "://" + endpointItem[0].Endpoint
-	}
+	endpoint := os.Getenv("OSS_ENDPOINT")
 
 	if endpoint == "" {
-		endpoint = fmt.Sprintf("http://oss-%s.aliyuncs.com", c.Region)
+		endpointClient := location.NewClient(c.AccessKey, c.SecretKey)
+		endpointClient.SetSecurityToken(c.SecurityToken)
+		args := &location.DescribeEndpointsArgs{
+			Id:          c.Region,
+			ServiceCode: "oss",
+			Type:        "openAPI",
+		}
+
+		endpoints, err := endpointClient.DescribeEndpoints(args)
+		if err != nil {
+			return nil, fmt.Errorf("Describe endpoint using region: %#v got an error: %#v.", c.Region, err)
+		}
+		endpointItem := endpoints.Endpoints.Endpoint
+		//var endpoint string
+		if endpointItem == nil || len(endpointItem) <= 0 {
+			log.Printf("Cannot find endpoint in the region: %#v", c.Region)
+			endpoint = ""
+		} else {
+			endpoint = strings.ToLower(endpointItem[0].Protocols.Protocols[0]) + "://" + endpointItem[0].Endpoint
+		}
+
+		if endpoint == "" {
+			endpoint = fmt.Sprintf("http://oss-%s.aliyuncs.com", c.Region)
+		}
 	}
 
 	log.Printf("[DEBUG] Instantiate OSS client using endpoint: %#v", endpoint)
