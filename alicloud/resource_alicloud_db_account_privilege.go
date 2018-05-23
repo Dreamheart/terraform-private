@@ -61,6 +61,9 @@ func resourceAlicloudDBAccountPrivilegeCreate(d *schema.ResourceData, meta inter
 	}
 	if len(dbList) > 0 {
 		for _, db := range dbList {
+			if err := meta.(*AliyunClient).WaitForDatabase(instanceId, db.(string), Running, 500); err != nil {
+				return fmt.Errorf("WaitForDatabase %s got error: %#v", Running, err)
+			}
 			if err := meta.(*AliyunClient).GrantAccountPrivilege(instanceId, account, db.(string), privilege); err != nil {
 				return fmt.Errorf("Grant Account %s Privilege %s got an error: %#v", account, privilege, err)
 			}

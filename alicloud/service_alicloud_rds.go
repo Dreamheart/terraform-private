@@ -341,6 +341,30 @@ func (client *AliyunClient) DescribeBackupPolicy(instanceId string) (policy *rds
 	return client.rdsconn.DescribeBackupPolicy(request)
 }
 
+// WaitForDatabase waits for database to given status
+func (client *AliyunClient) WaitForDatabase(instanceId string, dbName string, status Status, timeout int) error {
+	if timeout <= 0 {
+		timeout = DefaultTimeout
+	}
+	for {
+		database, err := client.DescribeDatabaseByName(instanceId, dbName)
+		if err != nil && !NotFoundError(err) && !IsExceptedError(err, InvalidDBInstanceIdNotFound) && !IsExceptedError(err, InvalidDBNameNotFound) {
+			return err
+		}
+		if database != nil && database.DBStatus == string(status) {
+			break
+		}
+
+		if timeout <= 0 {
+			return common.GetClientErrorFromString("Timeout")
+		}
+
+		timeout = timeout - DefaultIntervalMedium
+		time.Sleep(DefaultIntervalMedium * time.Second)
+	}
+	return nil
+}
+
 // WaitForInstance waits for instance to given status
 func (client *AliyunClient) WaitForDBInstance(instanceId string, status Status, timeout int) error {
 	if timeout <= 0 {
